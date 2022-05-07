@@ -1,0 +1,21 @@
+{
+  "name": "pelase",
+  "version": "0.0.0",
+  "description": "pelase",
+  "main": "server.js",
+  "author": {
+    "name": "Dan Hoang"
+  },
+  "dependencies": {
+    "colors": "^1.4.0",
+    "csv-parser": "^3.0.0",
+    "fs": "^0.0.1-security",
+    "puppeteer": "^13.7.0",
+    "random-mobile-numbers": "^1.0.1",
+    "request": "^2.88.2",
+    "selenium-webdriver": "^4.1.1"
+  },
+  "devDependencies": {
+    "chromedriver": "^100.0.0"
+  }
+}
