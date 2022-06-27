@@ -3,7 +3,6 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const csv = require('csv-parser');
 const createMobilePhoneNumber = require("random-mobile-numbers");
-const colors = require('colors/safe');
 
 //urls needed
 const MainPage = "https://www.endclothing.com/gb";
@@ -41,6 +40,10 @@ const CsvFilePath = 'active.csv';
 
 //file path to list of proxies
 const ProxiesFilePath = 'proxies.txt';
+
+//Create values for time in milliseconds
+const minute = 1000 * 60;
+const hour = minute * 60;
 
 //create sleep fucntion
 function sleep(ms) {
@@ -97,11 +100,13 @@ fs.createReadStream(CsvFilePath)
 
                 if (check == false) {
                     if (errCount == 3) {
-                        console.log(colors.red.bold(`Blocked too many times, ${i + 1}. ${emailCsv} skipped...`));
-                        badAccounts.push(emailCsv);
-                        badAccountPos.push(i);
+                        //console.log(`Blocked too many times, ${i + 1}. ${emailCsv} skipped...`);
+                        console.log('\x1b[31m%s\x1b[0m', `Blocked too many times, waiting...`);
+                        //badAccounts.push(emailCsv);
+                        //badAccountPos.push(i);
                         errCount = 0;
-                        await sleep(20000);
+                        i--;
+                        await sleep(30 * minute);                      
                     } else {
                         i--;
                         errCount++;
@@ -110,6 +115,7 @@ fs.createReadStream(CsvFilePath)
                     await sleep(5000);
                 } else {
                     errCount = 0;
+                    console.log('\x1b[32m%s\x1b[0m', `${i + 1}. ${emailCsv} created...`);
                 }
 
                 await sleep(Math.floor(Math.random() * 5000) + 10000);
@@ -131,6 +137,7 @@ async function AccountCreation(fnameInp, snameInp, emailInp, phoneInp, passInp, 
         //connect to localhost proxy
         browser = await puppeteer.launch({
             args: ['--proxy-server=' + proxyUrl, '--start-maximized'],
+            //args: ['--start-maximized'],
             headless: false,
             slowMo: 80,
         });
@@ -159,122 +166,141 @@ async function AccountCreation(fnameInp, snameInp, emailInp, phoneInp, passInp, 
         await page1.click(continueBtn);
         await page1.waitForTimeout(1500);
 
-        if (page1.url() === "https://www.endclothing.com/distil_r_drop.html%22") {
+        if (page1.url() === "https://www.endclothing.com/distil_r_drop.html") {
+            console.log('\x1b[33m%s\x1b[0m', `Error creating account for ${emailInp}...`);
             browser.close();
             return false;
         } else {
-            await page1.waitForSelector(fname);
-            await page1.waitForTimeout(1000)
+            try {
+                await page1
+                    .waitForSelector(pass)
+                    .then(() => page1.type(pass, passInp));
+                await page1
+                    .waitForSelector(pass)
+                    .then(() => page1.type(fname, fnameInp));       
+            } catch (e) {
+                console.log('Account already created prior')
+                browser.close();
+                return;
+            }
         }
 
-        await page1.type(fname, fnameInp);
         await page1.type(sname, snameInp);
-        await page1.type(pass, passInp);
         await page1.click(continueBtn2);
 
         await page1.waitForTimeout(1000);
 
-        if (page1.url() === "https://www.endclothing.com/distil_r_drop.html%22") {
+        if (page1.url() === "https://www.endclothing.com/distil_r_drop.html") {
+            console.log('\x1b[33m%s\x1b[0m', `Error creating account for ${emailInp}...`);
             browser.close();
             return false;
         }
 
     } catch (err) {
-        try {
-            await page1.type(pass, passInp);
-            browser.close();
-            return;
-        } catch (error) {
-            //console.log(`Error creating account for ${emailInp}`);
-            browser.close();
-            await page1.waitForTimeout(10000);
-            return false;
-        }
-    }
-
-    try {
-    //Add address
-        page2 = await browser.newPage();
-        await page1.close();
-
-        await page2.setViewport({ width: 1920, height: 1080 });
-        await page2.goto(AddAddress);
-
-        await page2.type(email, emailInp);
-        await page2.click(loginBtn);
-        
-        await page2.waitForTimeout(2000);
-        if (page2.url() === "https://www.endclothing.com/distil_r_drop.html%22") {
-            browser.close();
-            return false;
-        } else {
-            await page2.waitForSelector(pass);
-        }
-        
-        await page2.type(pass, passInp);
-        await page2.click(continueBtn2);
-
-        await page2.waitForTimeout(1000);
-        if (page2.url() === "https://www.endclothing.com/distil_r_drop.html%22") {
-            browser.close();
-            return false;
-        } else {
-            await page2.waitForSelector(phone);
-        }
-
-        await page2.type(phone, phoneInp);
-        await page2.click(enterAddBtn);
-        await page2.type(address, addressInp);
-        await page2.type(address2, address2Inp);
-        await page2.type(town, cityInp);
-        await page2.type(county, countyInp);
-        await page2.type(postcode, postcodeInp);
-        await page2.click(submitAddressBtn);
-    } catch (err) {
-        await page2.screenshot({ path: './screenshots/addressErr.png' });
-        console.log(`Address not added for ${i + 1}. ${emailCsv}...`);
-    }
-
-    try {
-    //Add payment
-    page3 = await browser.newPage();
-    await page2.close();
-
-    await page3.setViewport({ width: 1920, height: 1080 });
-    await page3.goto(AddPayment);
-
-    await page3.type(email, emailInp);
-    await page3.click(loginBtn);
-        
-    await page3.waitForTimeout(1000);
-    if (page2.url() === "https://www.endclothing.com/distil_r_drop.html%22") {
+        console.log('\x1b[33m%s\x1b[0m', `Error creating account for ${emailInp}...`);
         browser.close();
         return false;
-    } else {
-        await page2.waitForSelector(pass);
     }
+
+    //try {
+    ////Add address
+    //    page2 = await browser.newPage();
+    //    await page1.close();
+
+    //    await page2.authenticate({
+    //        username: proxyUser,
+    //        password: proxyPass
+    //    });
+
+    //    await page2.setViewport({ width: 1920, height: 1080 });
+    //    await page2.goto(AddAddress);
+
+    //    await page2.type(email, emailInp);
+    //    await page2.click(loginBtn);
         
-    await page3.type(pass, passInp);
-    await page3.click(continueBtn2);
+    //    await page2.waitForTimeout(2000);
+    //    if (page2.url() === "https://www.endclothing.com/distil_r_drop.html") {
+    //        console.log('\x1b[33m%s\x1b[0m', `Address failed for ${i + 1}. ${emailInp}...`);
+    //        browser.close();
+    //        return false;
+    //    } else {
+    //        await page2.waitForSelector(pass);
+    //    }
+        
+    //    await page2.type(pass, passInp);
+    //    await page2.click(continueBtn2);
 
-    await page3.waitForTimeout(1000);
-    if (page3.url() === "https://www.endclothing.com/distil_r_drop.html%22") {
-        browser.close();
-        return false;
-    } else {
-        await page3.waitForSelector(cardNumber);
-    }
+    //    await page2.waitForTimeout(1000);
+    //    if (page2.url() === "https://www.endclothing.com/distil_r_drop.html") {
+    //        console.log('\x1b[33m%s\x1b[0m', `Address failed for ${i + 1}. ${emailInp}...`);
+    //        browser.close();
+    //        return false;
+    //    } else {
+    //        await page2.waitForSelector(phone);
+    //    }
 
-    await page3.type(cardNumber, cardNumberInp);
-    await page3.type(expiration, expirationMInp + expirationYInp);
-    await page3.type(cvv, cvvInp);
-    await page3.click(submitCardBtn);
-    } catch (err) {
-        await page3.screenshot({ path: './screenshots/paymentErr.png' });
-        console.log(`Payment not added for ${i + 1}. ${emailCsv}...`);
-    }
+    //    await page2.type(phone, phoneInp);
+    //    await page2.click(enterAddBtn);
+    //    await page2.type(address, addressInp);
+    //    await page2.type(address2, address2Inp);
+    //    await page2.type(town, cityInp);
+    //    await page2.type(county, countyInp);
+    //    await page2.type(postcode, postcodeInp);
+    //    await page2.click(submitAddressBtn);
+    //} catch (err) {
+    //    console.log('\x1b[33m%s\x1b[0m', `Address failed for ${i + 1}. ${emailInp}...`);
+    //    browser.close();
+    //    return false;
+    //}
 
-    await page3.waitForTimeout(1500);
+    //try {
+    //    //Add payment
+    //    page3 = await browser.newPage();
+    //    await page2.close();
+
+    //    await page3.authenticate({
+    //        username: proxyUser,
+    //        password: proxyPass
+    //    });
+
+    //    await page3.setViewport({ width: 1920, height: 1080 });
+    //    await page3.goto(AddPayment);
+
+    //    await page3.type(email, emailInp);
+    //    await page3.click(loginBtn);
+        
+    //    await page3.waitForTimeout(1000);
+    //    if (page3.url() === "https://www.endclothing.com/distil_r_drop.html") {
+    //        console.log('\x1b[33m%s\x1b[0m', `Payment failed for ${i + 1}. ${emailInp}...`);
+    //        browser.close();
+    //        return false;
+    //    } else {
+    //        await page3.waitForSelector(pass);
+    //    }
+        
+    //    await page3.type(pass, passInp);
+    //    await page3.click(continueBtn2);
+
+    //    await page3.waitForTimeout(1000);
+    //    if (page3.url() === "https://www.endclothing.com/distil_r_drop.html") {
+    //        console.log('\x1b[33m%s\x1b[0m', `Payment failed for ${i + 1}. ${emailInp}...`);
+    //        browser.close();
+    //        return false;
+    //    } else {
+    //        await page3.waitForSelector(cardNumber);
+    //    }
+
+    //    await page3.type(cardNumber, cardNumberInp);
+    //    await page3.type(expiration, expirationMInp + expirationYInp);
+    //    await page3.type(cvv, cvvInp);
+    //    await page3.click(submitCardBtn);
+    //} catch (err) {
+    //    console.log('\x1b[33m%s\x1b[0m', `Payment failed for ${i + 1}. ${emailInp}...`);
+    //    browser.close();
+    //    return false;
+    //}
+
+    //await page3.waitForTimeout(1500);
     await browser.close();
 }
 
