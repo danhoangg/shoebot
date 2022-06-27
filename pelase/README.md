@@ -1,3 +1,3 @@
-# pelase
+# Shoe Site account creation bot
 
 
